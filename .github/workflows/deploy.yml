@@ -1,0 +1,49 @@
+# Hexo 博客自动构建与部署
+# 触发：push 到 hexo 分支
+# 流程：安装依赖 → hexo generate → 把 public/ 强推到 main 分支
+name: Deploy Hexo
+
+on:
+  push:
+    branches: [hexo]
+  workflow_dispatch:
+
+# 允许 Actions 推送到仓库
+permissions:
+  contents: write
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出源码（hexo 分支）
+        uses: actions/checkout@v4
+        with:
+          ref: hexo
+          fetch-depth: 0
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建
+        run: |
+          npx hexo clean
+          npx hexo generate
+
+      - name: 部署到 main 分支
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.GITHUB_TOKEN }}
+          external_repository: ${{ github.repository }}
+          publish_branch: main
+          publish_dir: ./public
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy: ${{ github.event.head_commit.message }}'
